@@ -179,41 +179,49 @@
     setTimeout(() => { el.style.display = 'none'; }, 3000);
   }
 
-  async function saveToGitHub() {
-    try {
-      const currentHTML = document.documentElement.outerHTML;
-      const dataJSON = JSON.stringify(appData);
-      const updatedHTML = currentHTML.replace(
-        /let appData = JSON\.parse\(localStorage\.getItem\('volleyData'\)\);[\s\S]*?if\(!appData\|\|!appData\.players\)\{[\s\S]*?appData=JSON\.parse\(JSON\.stringify\(defaultData\)\);[\s\S]*?localStorage\.setItem\('volleyData',JSON\.stringify\(appData\)\);\s*\}/,
-        `let appData = ${dataJSON};\n    localStorage.setItem('volleyData', JSON.stringify(appData));`
-      );
+async function saveToGitHub() {
+  try {
+    const currentHTML = document.documentElement.outerHTML;
+    const dataJSON = JSON.stringify(appData);
+    const updatedHTML = currentHTML.replace(
+      /let appData = JSON\.parse\(localStorage\.getItem\('volleyData'\)\);[\s\S]*?if\(!appData\|\|!appData\.players\)\{[\s\S]*?appData=JSON\.parse\(JSON\.stringify\(defaultData\)\);[\s\S]*?localStorage\.setItem\('volleyData',JSON\.stringify\(appData\)\);\s*\}/,
+      `let appData = ${dataJSON};\n    localStorage.setItem('volleyData', JSON.stringify(appData));`
+    );
 
-      const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/${GITHUB_PATH}`;
-      
-      const getRes = await fetch(apiUrl, {
+    const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/${GITHUB_PATH}`;
+    
+    // Get current file
+    const getRes = await fetch(apiUrl, {
+      headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    const fileData = await getRes.json();
+    
+    // Update file
+    const putRes = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'Update team data via VolleyTrack',
+        content: btoa(unescape(encodeURIComponent(updatedHTML))),
+        sha: fileData.sha
+      })
+    });
+    
+    if (putRes.ok) {
+      // Force GitHub Pages to rebuild
+      await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/pages/builds`, {
+        method: 'POST',
         headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
       });
-      const fileData = await getRes.json();
-      
-      const putRes = await fetch(apiUrl, {
-        method: 'PUT',
-        headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: 'Update team data via VolleyTrack',
-          content: btoa(unescape(encodeURIComponent(updatedHTML))),
-          sha: fileData.sha
-        })
-      });
-      
-      if (putRes.ok) {
-        showSaveStatus('✅ Changes saved to GitHub');
-      } else {
-        showSaveStatus('⚠️ Saved locally only', true);
-      }
-    } catch(e) {
-      console.log('GitHub save failed, saved locally only');
+      showSaveStatus('✅ Saved! Site updating...');
+    } else {
+      showSaveStatus('⚠️ Saved locally only', true);
     }
+  } catch(e) {
+    console.log('GitHub save failed:', e);
+    showSaveStatus('⚠️ Saved locally only', true);
   }
+}
 
   const gp=(id)=>ld().players.find(p=>p.id===id);
   function attemptLogin(){if(document.getElementById('loginPassword').value===ld().teamPassword){isLoggedIn=true;document.body.classList.add('logged-in');document.getElementById('loginError').style.display='none';if(ld().darkMode){document.body.classList.add('dark-mode');document.getElementById('darkModeToggle').innerHTML='☀️ Light';}renderPage();}else{document.getElementById('loginError').style.display='block';document.getElementById('loginPassword').value='';}}
