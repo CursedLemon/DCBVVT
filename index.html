@@ -36,7 +36,7 @@
     .admin-toggle, .dark-mode-toggle { background: #faf5ff; border: 2px solid #d8b4fe; padding: 10px 16px; border-radius: 30px; cursor: pointer; font-weight: 600; color: #7e22ce; font-size: 0.9rem; }
     body.dark-mode .nav-btn { background: #252540; color: #c4b5fd; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
-    .stat-card { background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 10px 25px -5px rgba(109,40,217,0.08); border: 1px solid #f3e8ff; }
+    .stat-card { background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 10px 25px -5px rgba(109,40,217,0.08); border: 1px solid #f3e8ff; position: relative; overflow: hidden; }
     body.dark-mode .stat-card { background: #1e1e36; border-color: #2d2d4a; }
     .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--gradient); }
     .gradient-card { background: var(--gradient); color: #fff; border: none; }
@@ -113,8 +113,8 @@
   <div class="login-card">
     <div class="login-logo">VolleyTrack</div>
     <p style="color:#9333ea;margin-bottom:5px;font-weight:600">Team Statistics Portal</p>
-    <input type="password" class="login-input" id="loginPassword" placeholder="Enter team password" onkeydown="if(event.key==='Enter')attemptLogin()">
-    <button class="login-btn" onclick="attemptLogin()">🔓 Enter</button>
+    <input type="password" class="login-input" id="loginPassword" placeholder="Enter team password">
+    <button class="login-btn" id="loginBtn">🔓 Enter</button>
     <p class="login-error" id="loginError">Incorrect password.</p>
   </div>
 </div>
@@ -138,8 +138,7 @@
 <div class="modal" id="genericModal"><div class="modal-content" id="modalBody"></div></div>
 
 <script>
-(function() {
-
+// ============ GITHUB CONFIG ============
 const GITHUB_TOKEN = 'github' + '_pat_' + '11BB2URVI0IqyqoGSxULRN_XP2vPzgH5exb19E50h0rrNXeL7QvXJKmygfMzGx5DZ225MGFLSJEMFtsArH';
 const GITHUB_USERNAME = 'CursedLemon';
 const GITHUB_REPO = 'DCBVVT';
@@ -155,15 +154,14 @@ if(!appData.teamPassword)appData.teamPassword='dcb67';
 let isLoggedIn=false,isAdmin=false,currentPage='dashboard',currentPlayerId=null,currentPlayerTab='overview',expandedMatches=new Set();
 const ld=()=>appData;
 const sd=()=>{localStorage.setItem('volleyData',JSON.stringify(appData));if(GITHUB_ENABLED)saveToGitHub();};
+const gp=(id)=>ld().players.find(p=>p.id===id);
 
 function showSaveStatus(msg,isErr){const el=document.getElementById('saveStatus');el.textContent=msg;el.className='save-status'+(isErr?' error':'');el.style.display='block';setTimeout(()=>{el.style.display='none';},3000);}
 
-async function saveToGitHub(){try{const d=JSON.stringify(appData);const gh=document.documentElement.outerHTML.replace(/let appData = JSON\.parse\(localStorage\.getItem\('volleyData'\)\);[\s\S]*?if\(!appData\|\|!appData\.players\)\{[\s\S]*?appData=JSON\.parse\(JSON\.stringify\(defaultData\)\);[\s\S]*?localStorage\.setItem\('volleyData',JSON\.stringify\(appData\)\);\s*\}/,'let appData = '+d+';\n    localStorage.setItem(\'volleyData\', JSON.stringify(appData));');const api='https://api.github.com/repos/'+GITHUB_USERNAME+'/'+GITHUB_REPO+'/contents/'+GITHUB_PATH;const g=await fetch(api,{headers:{'Authorization':'token '+GITHUB_TOKEN,'Accept':'application/vnd.github.v3+json'}});const f=await g.json();const p=await fetch(api,{method:'PUT',headers:{'Authorization':'token '+GITHUB_TOKEN,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({message:'Update data',content:btoa(unescape(encodeURIComponent(gh))),sha:f.sha})});if(p.ok){await fetch('https://api.github.com/repos/'+GITHUB_USERNAME+'/'+GITHUB_REPO+'/pages/builds',{method:'POST',headers:{'Authorization':'token '+GITHUB_TOKEN,'Accept':'application/vnd.github.v3+json'}});showSaveStatus('✅ Saved! Updating site...');}else{showSaveStatus('⚠️ Saved locally',true);}}catch(e){showSaveStatus('⚠️ Saved locally',true);}}
+async function saveToGitHub(){try{const d=JSON.stringify(appData);const gh=document.documentElement.outerHTML.replace(/let appData = JSON\.parse\(localStorage\.getItem\('volleyData'\)\);[\s\S]*?if\(!appData\|\|!appData\.players\)\{[\s\S]*?appData=JSON\.parse\(JSON\.stringify\(defaultData\)\);[\s\S]*?localStorage\.setItem\('volleyData',JSON\.stringify\(appData\)\);\s*\}/,'let appData = '+d+';\n    localStorage.setItem(\'volleyData\', JSON.stringify(appData));');const api='https://api.github.com/repos/'+GITHUB_USERNAME+'/'+GITHUB_REPO+'/contents/'+GITHUB_PATH;const g=await fetch(api,{headers:{'Authorization':'token '+GITHUB_TOKEN,'Accept':'application/vnd.github.v3+json'}});const f=await g.json();const p=await fetch(api,{method:'PUT',headers:{'Authorization':'token '+GITHUB_TOKEN,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({message:'Update data',content:btoa(unescape(encodeURIComponent(gh))),sha:f.sha})});if(p.ok){try{await fetch('https://api.github.com/repos/'+GITHUB_USERNAME+'/'+GITHUB_REPO+'/pages/builds',{method:'POST',headers:{'Authorization':'token '+GITHUB_TOKEN,'Accept':'application/vnd.github.v3+json'}});}catch(e){}showSaveStatus('✅ Saved! Updating site...');}else{showSaveStatus('⚠️ Saved locally',true);}}catch(e){showSaveStatus('⚠️ Saved locally',true);}}
 
 function attemptLogin(){if(document.getElementById('loginPassword').value===ld().teamPassword){isLoggedIn=true;document.body.classList.add('logged-in');document.getElementById('loginError').style.display='none';if(ld().darkMode){document.body.classList.add('dark-mode');document.getElementById('darkModeToggle').innerHTML='☀️ Light';}renderPage();}else{document.getElementById('loginError').style.display='block';document.getElementById('loginPassword').value='';}}
-window.attemptLogin=attemptLogin;
 
-const gp=(id)=>ld().players.find(p=>p.id===id);
 const calcStats=(pid)=>{const m=ld().matches;let t={kills:0,errors:0,attempts:0,assists:0,aces:0,digs:0,blocks:0,played:0,mvpCount:0};m.forEach(x=>{const p=x.performances?.[pid];if(p?.played){t.played++;t.kills+=p.kills||0;t.errors+=p.errors||0;t.attempts+=p.attempts||0;t.assists+=p.assists||0;t.aces+=p.aces||0;t.digs+=p.digs||0;t.blocks+=p.blocks||0;}if(x.mvp===pid)t.mvpCount++;});return{...t,hittingPct:t.attempts>0?parseFloat(((t.kills-t.errors)/t.attempts*100).toFixed(1)):0,points:t.kills+t.aces+(t.blocks||0)};};
 const getStats=(id)=>{const p=gp(id);return p?.manualStats||calcStats(id);};
 const getBBP=(id)=>ld().playerBBP?.[id]??0;
@@ -174,7 +172,6 @@ function navigateTo(p){currentPage=p;if(p==='dashboard')currentPlayerId=null;doc
 function toggleAdmin(){if(!isAdmin){const pw=prompt('Admin password:');if(pw===ld().adminPassword){isAdmin=true;document.getElementById('adminToggle').classList.add('active-admin');document.getElementById('adminToggle').innerHTML='🔓 Admin ON';}else{alert('Wrong!');return;}}else{isAdmin=false;document.getElementById('adminToggle').classList.remove('active-admin');document.getElementById('adminToggle').innerHTML='🔒 Admin';}renderPage();}
 function toggleDark(){document.body.classList.toggle('dark-mode');ld().darkMode=document.body.classList.contains('dark-mode');document.getElementById('darkModeToggle').innerHTML=ld().darkMode?'☀️ Light':'🌙 Dark';sd();}
 function toggleMatch(mid){if(expandedMatches.has(mid))expandedMatches.delete(mid);else expandedMatches.add(mid);renderPage();}
-
 window.changeTeamName=function(){if(!isAdmin)return;const n=prompt('New team name:',ld().teamName||'VolleyTrack');if(n&&n.trim()){ld().teamName=n.trim();sd();updateLogo();}};
 
 function renderDashboard(c){const m=ld().matches,w=m.filter(x=>x.result==='Win').length,tp=ld().players.reduce((a,p)=>a+getStats(p.id).points,0),pr=ld().practices,th=pr.reduce((s,p)=>s+(p.duration||0),0)/60;if(ld().players.length===0){c.innerHTML='<div class="empty-state"><h2>🏐 Welcome!</h2><p style="margin:15px 0;color:#9333ea">Add players to get started.</p>'+(isAdmin?'<button onclick="navigateTo(\'players\')">👥 Go to Players</button>':'')+'</div>';return;}c.innerHTML='<div class="grid"><div class="stat-card"><div class="card-label">Matches</div><div class="card-value">'+m.length+'</div></div><div class="stat-card"><div class="card-label">W/L</div><div class="card-value">'+w+'-'+(m.length-w)+'</div></div><div class="stat-card gradient-card"><div class="card-label">Win Rate</div><div class="card-value">'+(m.length?Math.round(w/m.length*100):0)+'%</div></div><div class="stat-card"><div class="card-label">Total Points</div><div class="card-value">'+tp+'</div></div><div class="stat-card"><div class="card-label">Practices</div><div class="card-value">'+pr.length+'</div></div><div class="stat-card"><div class="card-label">Hours</div><div class="card-value">'+th.toFixed(1)+'</div></div></div>'+(ld().matches.length>0?'<h3 style="margin:25px 0 15px">🏆 Team Leaders</h3><div class="table-wrapper">'+leadersTable()+'</div><h3 style="margin:25px 0 15px">📋 Recent Activity</h3><div class="table-wrapper">'+recentActivity()+'</div>':'');}
@@ -208,8 +205,7 @@ function ratingTab(p){const skills=['serving','passing','hitting','blocking','de
 function updateRating(pid,skill,val){if(!isAdmin)return;const n=parseFloat(val);if(isNaN(n)||n<0||n>10)return;if(!ld().playerRatings[pid])ld().playerRatings[pid]={};ld().playerRatings[pid][skill]=Math.round(n*10)/10;sd();renderPlayerTabContent();}
 window.updateRating=updateRating;
 
-let tooltipTimeout;
-function showTooltip(e,text){const t=document.getElementById('tooltip');if(!t){const d=document.createElement('div');d.id='tooltip';d.className='tooltip';document.body.appendChild(d);}const tt=document.getElementById('tooltip');tt.style.display='block';tt.style.left=(e.clientX+15)+'px';tt.style.top=(e.clientY-50)+'px';tt.textContent=text;}
+function showTooltip(e,text){let t=document.getElementById('tooltip');if(!t){t=document.createElement('div');t.id='tooltip';t.style.cssText='position:fixed;background:#1e1b4b;color:#fff;padding:8px 12px;border-radius:8px;font-size:0.8rem;pointer-events:none;z-index:1000;display:none;white-space:pre-line;';document.body.appendChild(t);}t.style.display='block';t.style.left=(e.clientX+15)+'px';t.style.top=(e.clientY-50)+'px';t.textContent=text;}
 function hideTooltip(){const t=document.getElementById('tooltip');if(t)t.style.display='none';}
 window.showTooltip=showTooltip;window.hideTooltip=hideTooltip;
 
@@ -228,6 +224,8 @@ window.openAddPracticeModal=function(){if(!isAdmin||ld().players.length===0){ale
 window.addPractice=function(){const att={};document.querySelectorAll('.aPres').forEach(cb=>{const pid=cb.dataset.player;const row=cb.closest('div');const select=row.querySelector('.aRat');att[pid]={present:cb.checked,rating:select?parseInt(select.value):3,notes:''};});ld().practices.push({id:'pr'+Date.now(),date:document.getElementById('prDate').value,duration:parseInt(document.getElementById('prDur').value)||60,focus:document.getElementById('prFocus').value||'General',notes:document.getElementById('prNotes')?.value||'',attendance:att});sd();closeModal();renderPage();};
 
 document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('loginBtn').addEventListener('click',attemptLogin);
+  document.getElementById('loginPassword').addEventListener('keydown',function(e){if(e.key==='Enter')attemptLogin();});
   document.querySelectorAll('#navLinks .nav-btn').forEach(btn=>{btn.addEventListener('click',function(){navigateTo(this.dataset.page);});});
   document.getElementById('adminToggle').addEventListener('click',toggleAdmin);
   document.getElementById('darkModeToggle').addEventListener('click',toggleDark);
@@ -241,7 +239,6 @@ document.addEventListener('DOMContentLoaded',()=>{
 window.navigateTo=navigateTo;window.toggleAdminMode=toggleAdmin;window.toggleDarkMode=toggleDark;
 window.toggleMatchExpansion=toggleMatch;window.switchPlayerTab=switchPlayerTab;window.updateComparison=updateComp;
 window.updateRatingDecimal=updateRating;window.setMVP=setMVP;window.saveMVP=saveMVP;window.changeTeamName=changeTeamName;
-})();
 </script>
 </body>
 </html>
